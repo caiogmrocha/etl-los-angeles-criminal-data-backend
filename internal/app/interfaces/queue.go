@@ -2,7 +2,7 @@ package interfaces
 
 type ProduceOptions struct {
 	// Message to be enqueued
-	Message string
+	Message []byte
 	// Queue name
 	QueueName string
 	// Exchange name

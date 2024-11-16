@@ -1,57 +1,27 @@
 package main
 
 import (
+	"context"
 	"log"
 	"sync"
 
 	configs "github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/configs"
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
+	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/service"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/infra"
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/pkg/utils"
 )
 
 func main() {
 	defer configs.Close()
 
-	queue := infra.NewRabbitMQQueue()
-
 	wg := sync.WaitGroup{}
 
+	rabbitmqQueue := infra.NewRabbitMQQueue()
+	produceProcessingTasksService := service.NewProduceProcessingTasksService(rabbitmqQueue)
+
+	go produceProcessingTasksService.Execute(context.Background(), "../../assets/crime_data_from_2020_to_2024_los_angeles_minified.csv")
 	wg.Add(1)
 
-	go func() {
-		log.Println("Producing messages")
-
-		for i := 0; i < 1000; i++ {
-			err := queue.Produce(interfaces.ProduceOptions{
-				Message:      "Hello, World!",
-				QueueName:    "hello",
-				ExchangeName: "",
-				RoutingKey:   "hello",
-				ContentType:  "text/plain",
-			})
-
-			utils.FailOnError(err, "Failed to produce message")
-		}
-	}()
-
-	wg.Add(1)
-
-	go func() {
-		err := queue.Consume(func(msg string) error {
-			log.Printf("Received message: %s", msg)
-			return nil
-		}, interfaces.ConsumeOptions{
-			QueueName:    "hello",
-			ExchangeName: "",
-			RoutingKey:   "hello",
-			ContentType:  "text/plain",
-		})
-
-		utils.FailOnError(err, "Failed to consume message")
-	}()
+	log.Println("Press CTRL+C to stop the service")
 
 	wg.Wait()
-
-	log.Println("Press CTRL+C to stop consuming messages")
 }

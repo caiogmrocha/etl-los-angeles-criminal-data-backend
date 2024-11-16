@@ -42,7 +42,7 @@ func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
 		false,
 		amqp.Publishing{
 			ContentType: options.ContentType,
-			Body:        []byte(options.Message),
+			Body:        options.Message,
 		},
 	)
 
