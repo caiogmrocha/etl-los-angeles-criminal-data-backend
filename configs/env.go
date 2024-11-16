@@ -6,9 +6,6 @@ import (
 )
 
 func ConfigEnv() {
-	// located in current directory
-	// path := filepath.Join(".", ".env")
-
 	err := godotenv.Load()
 
 	utils.FailOnError(err, "Error loading .env file")
