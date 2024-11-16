@@ -5,7 +5,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func init() {
+func ConfigEnv() {
 	// located in current directory
 	// path := filepath.Join(".", ".env")
 
