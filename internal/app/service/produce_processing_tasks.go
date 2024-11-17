@@ -13,7 +13,6 @@ import (
 
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/value_objects"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/pkg/utils"
 )
 
@@ -70,7 +69,7 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 				CrmCdDesc:    row[9],
 				Mocodes:      row[10],
 				VictAge:      row[11],
-				VictSex:      value_objects.Sex(row[12]),
+				VictSex:      row[12],
 				VictDescent:  row[13],
 				PremisCd:     row[14],
 				PremisDesc:   row[15],

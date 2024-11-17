@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"path/filepath"
 	"sync"
 
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/configs"
@@ -25,7 +26,8 @@ func main() {
 
 	wg.Add(1)
 	go func() {
-		produceProcessingTasksService.Execute(context.Background(), "../../assets/crime_data_from_2020_to_2024_los_angeles_minified.csv", &recordsTotal)
+		databasePath := filepath.Join("..", "..", "assets", "crime_data_from_2020_to_2024_los_angeles_minified.csv")
+		produceProcessingTasksService.Execute(context.Background(), databasePath, &recordsTotal)
 
 		wg.Done()
 	}()
@@ -66,9 +68,20 @@ func main() {
 
 	wg.Wait()
 
-	outputDataMap.Range(func(key, value any) bool {
-		log.Printf("%s %+v\n", key, value)
+	wg.Add(1)
 
-		return true
-	})
+	go func() {
+		outputDataMap.Range(func(key, value any) bool {
+			storeOutputReportService := service.NewStoreOutputReportService()
+
+			outputPath := filepath.Join("..", "..", "assets", "output.json")
+			storeOutputReportService.Execute(outputDataMap, outputPath)
+
+			return true
+		})
+
+		wg.Done()
+	}()
+
+	wg.Wait()
 }

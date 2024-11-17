@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/value_objects"
 )
 
 func TestCountCrimesAmountPerSexService_Execute_Success(t *testing.T) {
@@ -15,12 +14,12 @@ func TestCountCrimesAmountPerSexService_Execute_Success(t *testing.T) {
 	syncMap := &sync.Map{}
 
 	// Act
-	service.Execute(recordMockFactory(value_objects.Male), syncMap)
-	service.Execute(recordMockFactory(value_objects.Male), syncMap)
-	service.Execute(recordMockFactory(value_objects.Female), syncMap)
+	service.Execute(recordMockFactory("M"), syncMap)
+	service.Execute(recordMockFactory("M"), syncMap)
+	service.Execute(recordMockFactory("F"), syncMap)
 
 	// Assert
-	if value, ok := syncMap.Load(value_objects.Male); ok {
+	if value, ok := syncMap.Load("M"); ok {
 		if value.(int) != 2 {
 			t.Errorf("Expected value to be 1, but got %d", value.(int))
 		}
@@ -28,7 +27,7 @@ func TestCountCrimesAmountPerSexService_Execute_Success(t *testing.T) {
 		t.Errorf("Expected value to be 1, but got 0")
 	}
 
-	if value, ok := syncMap.Load(value_objects.Female); ok {
+	if value, ok := syncMap.Load("F"); ok {
 		if value.(int) != 1 {
 			t.Errorf("Expected value to be 1, but got %d", value.(int))
 		}
@@ -37,7 +36,7 @@ func TestCountCrimesAmountPerSexService_Execute_Success(t *testing.T) {
 	}
 }
 
-func recordMockFactory(sex value_objects.Sex) *entity.Record {
+func recordMockFactory(sex string) *entity.Record {
 	recordMock := &entity.Record{
 		DR_NO:        "123",
 		DateRptd:     "2021-01-01",

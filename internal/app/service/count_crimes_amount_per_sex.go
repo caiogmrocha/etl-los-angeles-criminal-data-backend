@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/value_objects"
 )
 
 type CountCrimesAmountPerSexService struct{}
@@ -15,7 +14,7 @@ func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *
 	}
 
 	if record.VictSex == "" {
-		record.VictSex = value_objects.Unknown
+		record.VictSex = "U"
 	}
 
 	if value, ok := output.Load(record.VictSex); ok {
