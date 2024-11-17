@@ -24,7 +24,7 @@ type ConsumeOptions struct {
 	ContentType string
 }
 
-type ConsumeCallback func(string) error
+type ConsumeCallback func([]byte) error
 
 type Queue interface {
 	// Push a message to the queue

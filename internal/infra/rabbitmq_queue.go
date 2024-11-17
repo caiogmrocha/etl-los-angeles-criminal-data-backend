@@ -77,7 +77,7 @@ func (q *RabbitMQQueue) Consume(cb interfaces.ConsumeCallback, options interface
 	}
 
 	for msg := range msgs {
-		err = cb(string(msg.Body))
+		err = cb(msg.Body)
 
 		if err != nil {
 			log.Printf("Failed to consume message: %s", err)

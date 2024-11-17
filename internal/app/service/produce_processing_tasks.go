@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
@@ -20,7 +21,11 @@ type ProduceProcessingTasksService struct {
 	queue interfaces.Queue
 }
 
-func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePath string) {
+const (
+	PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME = "process.crimes-amount-per-sex"
+)
+
+func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePath string, recordsTotal *int) {
 	file, err := os.Open(databasePath)
 
 	utils.FailOnError(err, "Failed to open database file")
@@ -30,13 +35,14 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 	csvReader := csv.NewReader(file)
 	csvReader.Read()
 
+	mu := sync.Mutex{}
+
 	for {
 		select {
 		case <-ctx.Done():
 			log.Print("Database .csv reading aborted")
 			return
 		default:
-			log.Print("Start produce record to queue")
 			row, err := csvReader.Read()
 
 			if err != nil {
@@ -46,6 +52,10 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 				utils.FailOnError(err, "Error while reading rows from database .csv")
 			}
+
+			mu.Lock()
+			*recordsTotal++
+			mu.Unlock()
 
 			record := &entity.Record{
 				DR_NO:        row[0],
@@ -82,9 +92,9 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 			err = s.queue.Produce(interfaces.ProduceOptions{
 				Message:      marshalledRecord,
-				QueueName:    "process.crimes-amount-per-sex",
+				QueueName:    PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME,
 				ExchangeName: "",
-				RoutingKey:   "process.crimes-amount-per-sex",
+				RoutingKey:   PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME,
 				ContentType:  "application/json",
 			})
 
