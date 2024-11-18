@@ -71,14 +71,10 @@ func main() {
 	wg.Add(1)
 
 	go func() {
-		outputDataMap.Range(func(key, value any) bool {
-			storeOutputReportService := service.NewStoreOutputReportService()
+		storeOutputReportService := service.NewStoreOutputReportService()
+		outputPath := filepath.Join("..", "..", "assets", "output.json")
 
-			outputPath := filepath.Join("..", "..", "assets", "output.json")
-			storeOutputReportService.Execute(outputDataMap, outputPath)
-
-			return true
-		})
+		storeOutputReportService.Execute(outputDataMap, outputPath)
 
 		wg.Done()
 	}()
