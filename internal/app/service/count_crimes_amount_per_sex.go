@@ -16,13 +16,13 @@ type CountCrimesAmountPerSexData struct {
 }
 
 const (
-	outputKey = "crimes_amount_per_sex"
+	CRIMES_AMOUNT_PER_SEX_OUTPUT_KEY = "crimes_amount_per_sex"
 )
 
 func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *sync.Map) {
 	var crimesAmountPerSexData *CountCrimesAmountPerSexData
 
-	value, ok := output.Load(outputKey)
+	value, ok := output.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
 
 	if !ok {
 		crimesAmountPerSexData = &CountCrimesAmountPerSexData{
@@ -46,7 +46,7 @@ func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *
 		crimesAmountPerSexData.Unknown++
 	}
 
-	output.Store(outputKey, crimesAmountPerSexData)
+	output.Store(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY, crimesAmountPerSexData)
 }
 
 func NewCountCrimesAmountPerSexService() *CountCrimesAmountPerSexService {
