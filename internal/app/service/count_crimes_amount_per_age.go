@@ -23,8 +23,11 @@ type CountCrimesAmountPerAgeData struct {
 	Unknown    int `json:"unknown"`
 }
 
+const ()
+
 const (
-	CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY = "crimes_amount_per_age"
+	CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY         = "crimes_amount_per_age"
+	PROCESS_CRIMES_AMOUNT_PER_AGE_QUEUE_NAME = "process.crimes-amount-per-age"
 )
 
 func (s *CountCrimesAmountPerAgeService) Execute(record *entity.Record, output *sync.Map) {

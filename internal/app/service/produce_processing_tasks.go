@@ -21,7 +21,8 @@ type ProduceProcessingTasksService struct {
 }
 
 const (
-	PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME = "process.crimes-amount-per-sex"
+	PROCESS_CRIMES_DATA_ROUTING_KEY   = "process.*"
+	PROCESS_CRIMES_DATA_EXCHANGE_NAME = "process-crimes-data"
 )
 
 func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePath string, recordsTotal *int) {
@@ -33,6 +34,31 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 	csvReader := csv.NewReader(file)
 	csvReader.Read()
+
+	queuesToBind := []interfaces.AssertExchangeOptionsQueuesToBind{
+		{
+			QueueName:  PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME,
+			RoutingKey: PROCESS_CRIMES_DATA_ROUTING_KEY,
+		},
+		{
+			QueueName:  PROCESS_CRIMES_AMOUNT_PER_AGE_QUEUE_NAME,
+			RoutingKey: PROCESS_CRIMES_DATA_ROUTING_KEY,
+		},
+	}
+
+	for _, queue := range queuesToBind {
+		err := s.queue.AssertQueue(queue.QueueName)
+
+		utils.FailOnError(err, fmt.Sprintf("error while asserting queue: %s", queue))
+	}
+
+	err = s.queue.AssertExchange(interfaces.AssertExchangeOptions{
+		ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
+		ExchangeType: "topic",
+		QueuesToBind: queuesToBind,
+	})
+
+	utils.FailOnError(err, fmt.Sprintf("error while asserting exchange: %s", PROCESS_CRIMES_DATA_EXCHANGE_NAME))
 
 	mu := sync.Mutex{}
 
@@ -91,9 +117,9 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 			err = s.queue.Produce(interfaces.ProduceOptions{
 				Message:      marshalledRecord,
-				QueueName:    PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME,
-				ExchangeName: "",
-				RoutingKey:   PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME,
+				ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
+				ExchangeType: "topic",
+				RoutingKey:   "process.*",
 				ContentType:  "application/json",
 			})
 

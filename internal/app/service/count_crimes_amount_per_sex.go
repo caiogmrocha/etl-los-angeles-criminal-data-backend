@@ -16,7 +16,8 @@ type CountCrimesAmountPerSexData struct {
 }
 
 const (
-	CRIMES_AMOUNT_PER_SEX_OUTPUT_KEY = "crimes_amount_per_sex"
+	CRIMES_AMOUNT_PER_SEX_OUTPUT_KEY         = "crimes_amount_per_sex"
+	PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME = "process.crimes-amount-per-sex"
 )
 
 func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *sync.Map) {
