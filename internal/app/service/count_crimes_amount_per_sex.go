@@ -20,10 +20,10 @@ const (
 	PROCESS_CRIMES_AMOUNT_PER_SEX_QUEUE_NAME = "process.crimes-amount-per-sex"
 )
 
-func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *sync.Map) {
+func (s *CountCrimesAmountPerSexService) Execute(output *sync.Map, record *entity.Record) {
 	var crimesAmountPerSexData *CountCrimesAmountPerSexData
 
-	value, ok := output.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
+	value, ok := output.Load(CRIMES_AMOUNT_PER_SEX_OUTPUT_KEY)
 
 	if !ok {
 		crimesAmountPerSexData = &CountCrimesAmountPerSexData{
@@ -47,9 +47,9 @@ func (s *CountCrimesAmountPerSexService) Execute(record *entity.Record, output *
 		crimesAmountPerSexData.Unknown++
 	}
 
-	output.Store(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY, crimesAmountPerSexData)
+	output.Store(CRIMES_AMOUNT_PER_SEX_OUTPUT_KEY, crimesAmountPerSexData)
 }
 
-func NewCountCrimesAmountPerSexService() *CountCrimesAmountPerSexService {
+func NewCountCrimesAmountPerSexService() Service {
 	return &CountCrimesAmountPerSexService{}
 }

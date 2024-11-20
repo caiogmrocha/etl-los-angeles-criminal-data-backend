@@ -7,7 +7,8 @@ import (
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
 )
 
-type CountCrimesAmountPerAgeService struct{}
+type CountCrimesAmountPerAgeService struct {
+}
 
 type CountCrimesAmountPerAgeData struct {
 	From0To9   int `json:"from_0_to_9"`
@@ -23,14 +24,12 @@ type CountCrimesAmountPerAgeData struct {
 	Unknown    int `json:"unknown"`
 }
 
-const ()
-
 const (
 	CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY         = "crimes_amount_per_age"
 	PROCESS_CRIMES_AMOUNT_PER_AGE_QUEUE_NAME = "process.crimes-amount-per-age"
 )
 
-func (s *CountCrimesAmountPerAgeService) Execute(record *entity.Record, output *sync.Map) {
+func (s *CountCrimesAmountPerAgeService) Execute(output *sync.Map, record *entity.Record) {
 	var crimesAmountPerAgeData *CountCrimesAmountPerAgeData
 
 	value, ok := output.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
@@ -89,6 +88,6 @@ func (s *CountCrimesAmountPerAgeService) Execute(record *entity.Record, output *
 	output.Store(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY, crimesAmountPerAgeData)
 }
 
-func NewCountCrimesAmountPerAgeService() *CountCrimesAmountPerAgeService {
+func NewCountCrimesAmountPerAgeService() Service {
 	return &CountCrimesAmountPerAgeService{}
 }

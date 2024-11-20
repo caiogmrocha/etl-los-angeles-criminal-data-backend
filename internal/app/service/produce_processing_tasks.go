@@ -126,8 +126,6 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 			if err != nil {
 				utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
 			}
-
-			log.Print("Start produce record to queue")
 		}
 	}
 }

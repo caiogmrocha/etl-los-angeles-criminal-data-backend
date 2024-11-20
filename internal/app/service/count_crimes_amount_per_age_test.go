@@ -15,9 +15,9 @@ func TestCountCrimesAmountPerAgeService_Execute_Success(t *testing.T) {
 	syncMap := &sync.Map{}
 
 	// Act
-	service.Execute(recordWithAgeMockFactory(20), syncMap)
-	service.Execute(recordWithAgeMockFactory(30), syncMap)
-	service.Execute(recordWithAgeMockFactory(30), syncMap)
+	service.Execute(syncMap, recordWithAgeMockFactory(20))
+	service.Execute(syncMap, recordWithAgeMockFactory(30))
+	service.Execute(syncMap, recordWithAgeMockFactory(30))
 
 	value, ok := syncMap.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
 
