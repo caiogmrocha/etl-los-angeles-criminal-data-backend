@@ -13,7 +13,7 @@ type RabbitMQQueue struct {
 	conn *amqp.Connection
 }
 
-func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
+func (q *RabbitMQQueue) AssertQueue(queueName string) error {
 	channel, err := q.conn.Channel()
 
 	if err != nil {
@@ -23,7 +23,7 @@ func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
 	defer channel.Close()
 
 	_, err = channel.QueueDeclare(
-		options.QueueName,
+		queueName,
 		true,
 		false,
 		false,
@@ -34,6 +34,54 @@ func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func (q *RabbitMQQueue) AssertExchange(options interfaces.AssertExchangeOptions) error {
+	channel, err := q.conn.Channel()
+
+	if err != nil {
+		return err
+	}
+
+	defer channel.Close()
+
+	err = channel.ExchangeDeclare(
+		options.ExchangeName,
+		options.ExchangeType,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+
+	for _, queue := range options.QueuesToBind {
+		err = channel.QueueBind(
+			queue.QueueName,
+			queue.RoutingKey,
+			options.ExchangeName,
+			false,
+			nil,
+		)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
+	channel, err := q.conn.Channel()
+
+	if err != nil {
+		return err
+	}
+
+	defer channel.Close()
 
 	err = channel.Publish(
 		options.ExchangeName,

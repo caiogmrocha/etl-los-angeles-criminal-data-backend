@@ -14,25 +14,33 @@ func TestCountCrimesAmountPerSexService_Execute_Success(t *testing.T) {
 	syncMap := &sync.Map{}
 
 	// Act
-	service.Execute(recordMockFactory("M"), syncMap)
-	service.Execute(recordMockFactory("M"), syncMap)
-	service.Execute(recordMockFactory("F"), syncMap)
+	service.Execute(syncMap, recordMockFactory("M"))
+	service.Execute(syncMap, recordMockFactory("M"))
+	service.Execute(syncMap, recordMockFactory("F"))
+
+	value, ok := syncMap.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
 
 	// Assert
-	if value, ok := syncMap.Load("M"); ok {
-		if value.(int) != 2 {
-			t.Errorf("Expected value to be 1, but got %d", value.(int))
-		}
-	} else {
-		t.Errorf("Expected value to be 1, but got 0")
+	if !ok {
+		t.Errorf("Expected to have a value in key %s of syncMap", CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
 	}
 
-	if value, ok := syncMap.Load("F"); ok {
-		if value.(int) != 1 {
-			t.Errorf("Expected value to be 1, but got %d", value.(int))
-		}
-	} else {
-		t.Errorf("Expected value to be 1, but got 0")
+	crimesAmountPerSexData := value.(*CountCrimesAmountPerSexData)
+
+	if crimesAmountPerSexData.Male != 2 {
+		t.Errorf("Expected crimesAmountPerSex to be 2, got %d", crimesAmountPerSexData.Male)
+	}
+
+	if crimesAmountPerSexData.Female != 1 {
+		t.Errorf("Expected crimesAmountPerSex to be 1, got %d", crimesAmountPerSexData.Female)
+	}
+
+	if crimesAmountPerSexData.NonBinary != 0 {
+		t.Errorf("Expected crimesAmountPerSex to be 0, got %d", crimesAmountPerSexData.NonBinary)
+	}
+
+	if crimesAmountPerSexData.Unknown != 0 {
+		t.Errorf("Expected crimesAmountPerSex to be 0, got %d", crimesAmountPerSexData.Unknown)
 	}
 }
 
