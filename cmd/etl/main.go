@@ -51,6 +51,11 @@ func main() {
 			Counter:            0,
 			DoneChannel:        make(chan bool),
 		},
+		service.PROCESS_CRIMES_AMOUNT_PER_AREA_QUEUE_NAME: {
+			ServiceConstructor: service.NewCountCrimesAmountPerAreaService,
+			Counter:            0,
+			DoneChannel:        make(chan bool),
+		},
 	}
 
 	for queueName := range consumersMap {

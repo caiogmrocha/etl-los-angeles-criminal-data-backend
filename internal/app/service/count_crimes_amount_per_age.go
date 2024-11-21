@@ -7,8 +7,7 @@ import (
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
 )
 
-type CountCrimesAmountPerAgeService struct {
-}
+type CountCrimesAmountPerAgeService struct{}
 
 type CountCrimesAmountPerAgeData struct {
 	From0To9   int `json:"from_0_to_9"`
