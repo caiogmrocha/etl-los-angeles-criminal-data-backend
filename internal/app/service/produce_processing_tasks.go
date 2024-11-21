@@ -44,6 +44,10 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 			QueueName:  PROCESS_CRIMES_AMOUNT_PER_AGE_QUEUE_NAME,
 			RoutingKey: PROCESS_CRIMES_DATA_ROUTING_KEY,
 		},
+		{
+			QueueName:  PROCESS_CRIMES_AMOUNT_PER_AREA_QUEUE_NAME,
+			RoutingKey: PROCESS_CRIMES_DATA_ROUTING_KEY,
+		},
 	}
 
 	for _, queue := range queuesToBind {
