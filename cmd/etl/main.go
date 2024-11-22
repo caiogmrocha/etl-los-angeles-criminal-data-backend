@@ -56,6 +56,11 @@ func main() {
 			Counter:            0,
 			DoneChannel:        make(chan bool),
 		},
+		service.PROCESS_CRIMES_AMOUNT_PER_PERIOD_QUEUE_NAME: {
+			ServiceConstructor: service.NewCountCrimesAmountPerPeriodService,
+			Counter:            0,
+			DoneChannel:        make(chan bool),
+		},
 	}
 
 	for queueName := range consumersMap {
