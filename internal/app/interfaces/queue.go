@@ -1,5 +1,7 @@
 package interfaces
 
+import amqp "github.com/rabbitmq/amqp091-go"
+
 type ProduceOptions struct {
 	// Message to be enqueued
 	Message []byte
@@ -13,6 +15,8 @@ type ProduceOptions struct {
 	RoutingKey string
 	// Content type
 	ContentType string
+	// Channel
+	Channel *amqp.Channel
 }
 
 type ConsumeOptions struct {
@@ -46,7 +50,7 @@ type ConsumeCallback func([]byte) error
 
 type Queue interface {
 	// Push a message to the queue
-	Produce(options ProduceOptions) error
+	Produce(options *ProduceOptions) error
 	// Pop a message from the queue
 	Consume(cb ConsumeCallback, options ConsumeOptions) error
 	// Assert the queue
