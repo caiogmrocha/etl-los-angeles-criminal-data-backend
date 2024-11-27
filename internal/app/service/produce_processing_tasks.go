@@ -11,9 +11,11 @@ import (
 	"os"
 	"sync"
 
+	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/configs"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/pkg/utils"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type ProduceProcessingTasksService struct {
@@ -23,6 +25,7 @@ type ProduceProcessingTasksService struct {
 const (
 	PROCESS_CRIMES_DATA_ROUTING_KEY   = "process.*"
 	PROCESS_CRIMES_DATA_EXCHANGE_NAME = "process-crimes-data"
+	PROCESS_CRIMES_DATA_BATCH_SIZE    = 1000
 )
 
 func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePath string, recordsTotal *int) {
@@ -69,6 +72,14 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 	utils.FailOnError(err, fmt.Sprintf("error while asserting exchange: %s", PROCESS_CRIMES_DATA_EXCHANGE_NAME))
 
 	mu := sync.Mutex{}
+
+	batch := []*entity.Record{}
+
+	amqpChannel, err := configs.AMQP.Channel()
+
+	if err != nil {
+		utils.FailOnError(err, "Failed to create AMQP channel")
+	}
 
 	for {
 		select {
@@ -121,18 +132,12 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 				LON:          row[27],
 			}
 
-			marshalledRecord, _ := json.Marshal(record)
+			batch = append(batch, record)
 
-			err = s.queue.Produce(interfaces.ProduceOptions{
-				Message:      marshalledRecord,
-				ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
-				ExchangeType: "topic",
-				RoutingKey:   "process.*",
-				ContentType:  "application/json",
-			})
-
-			if err != nil {
-				utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
+			if len(batch) == PROCESS_CRIMES_DATA_BATCH_SIZE {
+				go s.processBatch(amqpChannel, batch)
+				log.Printf("Produced %d records", *recordsTotal)
+				batch = []*entity.Record{}
 			}
 		}
 	}
@@ -143,5 +148,28 @@ func NewProduceProcessingTasksService(
 ) *ProduceProcessingTasksService {
 	return &ProduceProcessingTasksService{
 		queue: queue,
+	}
+}
+
+func (s *ProduceProcessingTasksService) processBatch(channel *amqp.Channel, recordsBatch []*entity.Record) {
+	mu := &sync.Mutex{}
+
+	for _, record := range recordsBatch {
+		marshalledRecord, _ := json.Marshal(record)
+
+		mu.Lock()
+		err := s.queue.Produce(&interfaces.ProduceOptions{
+			Message:      marshalledRecord,
+			ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
+			ExchangeType: "topic",
+			RoutingKey:   "process.*",
+			ContentType:  "application/json",
+			Channel:      channel,
+		})
+		mu.Unlock()
+
+		if err != nil {
+			utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
+		}
 	}
 }
