@@ -74,16 +74,24 @@ func (q *RabbitMQQueue) AssertExchange(options interfaces.AssertExchangeOptions)
 	return nil
 }
 
-func (q *RabbitMQQueue) Produce(options interfaces.ProduceOptions) error {
-	channel, err := q.conn.Channel()
+func (q *RabbitMQQueue) Produce(options *interfaces.ProduceOptions) error {
+	var channel *amqp.Channel
 
-	if err != nil {
-		return err
+	if options.Channel == nil {
+		var err error
+
+		channel, err = q.conn.Channel()
+
+		if err != nil {
+			return err
+		}
+
+		defer channel.Close()
+	} else {
+		channel = options.Channel
 	}
 
-	defer channel.Close()
-
-	err = channel.Publish(
+	err := channel.Publish(
 		options.ExchangeName,
 		options.RoutingKey,
 		false,
