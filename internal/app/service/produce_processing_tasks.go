@@ -11,9 +11,11 @@ import (
 	"os"
 	"sync"
 
+	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/configs"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/pkg/utils"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type ProduceProcessingTasksService struct {
@@ -23,6 +25,8 @@ type ProduceProcessingTasksService struct {
 const (
 	PROCESS_CRIMES_DATA_ROUTING_KEY   = "process.*"
 	PROCESS_CRIMES_DATA_EXCHANGE_NAME = "process-crimes-data"
+	GOROUTINES_AMOUNT                 = 8
+	PROCESS_CRIMES_DATA_BATCH_SIZE    = 1000
 )
 
 func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePath string, recordsTotal *int) {
@@ -68,7 +72,64 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 	utils.FailOnError(err, fmt.Sprintf("error while asserting exchange: %s", PROCESS_CRIMES_DATA_EXCHANGE_NAME))
 
-	mu := sync.Mutex{}
+	mu := &sync.Mutex{}
+
+	amqpChannel, err := configs.AMQP.Channel()
+
+	utils.FailOnError(err, "Failed to open a channel")
+
+	defer amqpChannel.Close()
+
+	recordsBatchesChannels := make([]chan *entity.Record, GOROUTINES_AMOUNT)
+
+	for i := 0; i < GOROUTINES_AMOUNT; i++ {
+		recordsBatchesChannels[i] = make(chan *entity.Record, PROCESS_CRIMES_DATA_BATCH_SIZE)
+
+		go s.processBatch(amqpChannel, recordsBatchesChannels[i])
+	}
+
+	s.roundRobin(ctx, csvReader, recordsTotal, recordsBatchesChannels, mu)
+}
+
+func NewProduceProcessingTasksService(
+	queue interfaces.Queue,
+) *ProduceProcessingTasksService {
+	return &ProduceProcessingTasksService{
+		queue: queue,
+	}
+}
+
+func (s *ProduceProcessingTasksService) processBatch(channel *amqp.Channel, recordsBatch <-chan *entity.Record) {
+	mu := &sync.Mutex{}
+
+	for record := range recordsBatch {
+		marshalledRecord, _ := json.Marshal(record)
+
+		mu.Lock()
+		err := s.queue.Produce(&interfaces.ProduceOptions{
+			Message:      marshalledRecord,
+			ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
+			ExchangeType: "topic",
+			RoutingKey:   "process.*",
+			ContentType:  "application/json",
+			Channel:      channel,
+		})
+		mu.Unlock()
+
+		if err != nil {
+			utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
+		}
+	}
+}
+
+func (s *ProduceProcessingTasksService) roundRobin(
+	ctx context.Context,
+	csvReader *csv.Reader,
+	recordsTotal *int,
+	recordsBatchedChannels []chan *entity.Record,
+	mu *sync.Mutex,
+) {
+	i := 0
 
 	for {
 		select {
@@ -80,6 +141,10 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 			if err != nil {
 				if errors.Is(err, io.EOF) {
+					for i := 0; i < GOROUTINES_AMOUNT; i++ {
+						close(recordsBatchedChannels[i])
+					}
+
 					return
 				}
 
@@ -89,6 +154,10 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 			mu.Lock()
 			*recordsTotal++
 			mu.Unlock()
+
+			if *recordsTotal%1000 == 0 {
+				log.Printf("Records read: %d", *recordsTotal)
+			}
 
 			record := &entity.Record{
 				DR_NO:        row[0],
@@ -121,27 +190,13 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 				LON:          row[27],
 			}
 
-			marshalledRecord, _ := json.Marshal(record)
+			recordsBatchedChannels[i] <- record
 
-			err = s.queue.Produce(interfaces.ProduceOptions{
-				Message:      marshalledRecord,
-				ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
-				ExchangeType: "topic",
-				RoutingKey:   "process.*",
-				ContentType:  "application/json",
-			})
+			i++
 
-			if err != nil {
-				utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
+			if i == GOROUTINES_AMOUNT {
+				i = 0
 			}
 		}
-	}
-}
-
-func NewProduceProcessingTasksService(
-	queue interfaces.Queue,
-) *ProduceProcessingTasksService {
-	return &ProduceProcessingTasksService{
-		queue: queue,
 	}
 }
