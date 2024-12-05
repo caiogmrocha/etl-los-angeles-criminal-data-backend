@@ -12,11 +12,12 @@ func TestCountCrimesAmountPerAreaService_Execute_Success(t *testing.T) {
 	service := NewCountCrimesAmountPerAreaService()
 
 	syncMap := &sync.Map{}
+	mutex := &sync.Mutex{}
 
 	// Act
-	service.Execute(syncMap, recordWithAreaMockFactory("North"))
-	service.Execute(syncMap, recordWithAreaMockFactory("South"))
-	service.Execute(syncMap, recordWithAreaMockFactory("South"))
+	service.Execute(syncMap, recordWithAreaMockFactory("North"), mutex)
+	service.Execute(syncMap, recordWithAreaMockFactory("South"), mutex)
+	service.Execute(syncMap, recordWithAreaMockFactory("South"), mutex)
 
 	value, ok := syncMap.Load(CRIMES_AMOUNT_PER_AREA_OUTPUT_KEY)
 

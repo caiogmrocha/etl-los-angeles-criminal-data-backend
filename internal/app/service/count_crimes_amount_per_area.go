@@ -15,10 +15,12 @@ const (
 	PROCESS_CRIMES_AMOUNT_PER_AREA_QUEUE_NAME = "process.crimes-amount-per-area"
 )
 
-func (s *CountCrimesAmountPerAreaService) Execute(output *sync.Map, record *entity.Record) {
+func (s *CountCrimesAmountPerAreaService) Execute(output *sync.Map, record *entity.Record, mu *sync.Mutex) {
 	var crimesAmountPerAreaData CountCrimesAmountPerAreaData
 
 	value, ok := output.Load(CRIMES_AMOUNT_PER_AREA_OUTPUT_KEY)
+
+	mu.Lock()
 
 	if !ok {
 		crimesAmountPerAreaData = make(CountCrimesAmountPerAreaData)
@@ -29,6 +31,8 @@ func (s *CountCrimesAmountPerAreaService) Execute(output *sync.Map, record *enti
 	crimesAmountPerAreaData[record.AREANAME]++
 
 	output.Store(CRIMES_AMOUNT_PER_AREA_OUTPUT_KEY, crimesAmountPerAreaData)
+
+	mu.Unlock()
 }
 
 func NewCountCrimesAmountPerAreaService() Service {

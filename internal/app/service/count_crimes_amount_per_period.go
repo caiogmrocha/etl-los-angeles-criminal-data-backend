@@ -20,10 +20,12 @@ const (
 	PROCESS_CRIMES_AMOUNT_PER_PERIOD_QUEUE_NAME = "process.crimes-amount-per-period"
 )
 
-func (s *CountCrimesAmountPerPeriodService) Execute(output *sync.Map, record *entity.Record) {
+func (s *CountCrimesAmountPerPeriodService) Execute(output *sync.Map, record *entity.Record, mu *sync.Mutex) {
 	var crimesAmountPerPeriodData *CountCrimesAmountPerPeriodData
 
 	value, ok := output.Load(CRIMES_AMOUNT_PER_PERIOD_OUTPUT_KEY)
+
+	mu.Lock()
 
 	if !ok {
 		crimesAmountPerPeriodData = &CountCrimesAmountPerPeriodData{}
@@ -66,6 +68,8 @@ func (s *CountCrimesAmountPerPeriodService) Execute(output *sync.Map, record *en
 	}
 
 	output.Store(CRIMES_AMOUNT_PER_PERIOD_OUTPUT_KEY, crimesAmountPerPeriodData)
+
+	mu.Unlock()
 }
 
 func NewCountCrimesAmountPerPeriodService() Service {

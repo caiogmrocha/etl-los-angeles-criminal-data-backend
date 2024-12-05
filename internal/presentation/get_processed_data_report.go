@@ -31,7 +31,6 @@ func (c *GetProcessedDataReportController) Handle(w http.ResponseWriter, r *http
 	}
 
 	w.Write(parsedReport)
-	w.WriteHeader(http.StatusOK)
 }
 
 func NewGetProcessedDataReportController(service *service.GetProcessedDataReportService) GetProcessedDataReportController {
