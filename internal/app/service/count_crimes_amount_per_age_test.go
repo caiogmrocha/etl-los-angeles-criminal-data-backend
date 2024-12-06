@@ -13,11 +13,12 @@ func TestCountCrimesAmountPerAgeService_Execute_Success(t *testing.T) {
 	service := NewCountCrimesAmountPerAgeService()
 
 	syncMap := &sync.Map{}
+	mutex := &sync.Mutex{}
 
 	// Act
-	service.Execute(syncMap, recordWithAgeMockFactory(20))
-	service.Execute(syncMap, recordWithAgeMockFactory(30))
-	service.Execute(syncMap, recordWithAgeMockFactory(30))
+	service.Execute(syncMap, recordWithAgeMockFactory(20), mutex)
+	service.Execute(syncMap, recordWithAgeMockFactory(30), mutex)
+	service.Execute(syncMap, recordWithAgeMockFactory(30), mutex)
 
 	value, ok := syncMap.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
 

@@ -12,11 +12,12 @@ func TestCountCrimesAmountPerPeriodService_Execute_Success(t *testing.T) {
 	service := NewCountCrimesAmountPerPeriodService()
 
 	syncMap := &sync.Map{}
+	mutex := &sync.Mutex{}
 
 	// Act
-	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2021 00:00:00 AM"))
-	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2021 00:00:00 AM"))
-	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2022 00:00:00 AM"))
+	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2021 00:00:00 AM"), mutex)
+	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2021 00:00:00 AM"), mutex)
+	service.Execute(syncMap, recordWithPeriodMockFactory("01/01/2022 00:00:00 AM"), mutex)
 
 	value, ok := syncMap.Load(CRIMES_AMOUNT_PER_PERIOD_OUTPUT_KEY)
 

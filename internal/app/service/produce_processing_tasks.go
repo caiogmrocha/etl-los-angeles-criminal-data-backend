@@ -34,8 +34,6 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 	utils.FailOnError(err, "Failed to open database file")
 
-	defer file.Close()
-
 	csvReader := csv.NewReader(file)
 	csvReader.Read()
 
@@ -72,23 +70,30 @@ func (s *ProduceProcessingTasksService) Execute(ctx context.Context, databasePat
 
 	utils.FailOnError(err, fmt.Sprintf("error while asserting exchange: %s", PROCESS_CRIMES_DATA_EXCHANGE_NAME))
 
-	mu := &sync.Mutex{}
+	mutex := &sync.Mutex{}
+	waitGroup := &sync.WaitGroup{}
 
 	amqpChannel, err := configs.AMQP.Channel()
 
 	utils.FailOnError(err, "Failed to open a channel")
-
-	defer amqpChannel.Close()
 
 	recordsBatchesChannels := make([]chan *entity.Record, GOROUTINES_AMOUNT)
 
 	for i := 0; i < GOROUTINES_AMOUNT; i++ {
 		recordsBatchesChannels[i] = make(chan *entity.Record, PROCESS_CRIMES_DATA_BATCH_SIZE)
 
+		waitGroup.Add(1)
 		go s.processBatch(amqpChannel, recordsBatchesChannels[i])
 	}
 
-	s.roundRobin(ctx, csvReader, recordsTotal, recordsBatchesChannels, mu)
+	waitGroup.Add(1)
+	go s.roundRobin(ctx, csvReader, recordsTotal, recordsBatchesChannels, mutex)
+
+	go func() {
+		waitGroup.Wait()
+		amqpChannel.Close()
+		file.Close()
+	}()
 }
 
 func NewProduceProcessingTasksService(
@@ -100,12 +105,12 @@ func NewProduceProcessingTasksService(
 }
 
 func (s *ProduceProcessingTasksService) processBatch(channel *amqp.Channel, recordsBatch <-chan *entity.Record) {
-	mu := &sync.Mutex{}
+	mutex := &sync.Mutex{}
 
 	for record := range recordsBatch {
 		marshalledRecord, _ := json.Marshal(record)
 
-		mu.Lock()
+		mutex.Lock()
 		err := s.queue.Produce(&interfaces.ProduceOptions{
 			Message:      marshalledRecord,
 			ExchangeName: PROCESS_CRIMES_DATA_EXCHANGE_NAME,
@@ -114,7 +119,7 @@ func (s *ProduceProcessingTasksService) processBatch(channel *amqp.Channel, reco
 			ContentType:  "application/json",
 			Channel:      channel,
 		})
-		mu.Unlock()
+		mutex.Unlock()
 
 		if err != nil {
 			utils.FailOnError(err, fmt.Sprintf("error while producing record: %+v", record))
@@ -127,7 +132,7 @@ func (s *ProduceProcessingTasksService) roundRobin(
 	csvReader *csv.Reader,
 	recordsTotal *int,
 	recordsBatchedChannels []chan *entity.Record,
-	mu *sync.Mutex,
+	mutex *sync.Mutex,
 ) {
 	i := 0
 
@@ -151,9 +156,9 @@ func (s *ProduceProcessingTasksService) roundRobin(
 				utils.FailOnError(err, "Error while reading rows from database .csv")
 			}
 
-			mu.Lock()
+			mutex.Lock()
 			*recordsTotal++
-			mu.Unlock()
+			mutex.Unlock()
 
 			if *recordsTotal%1000 == 0 {
 				log.Printf("Records read: %d", *recordsTotal)

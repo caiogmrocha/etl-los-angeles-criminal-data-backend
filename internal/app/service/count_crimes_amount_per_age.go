@@ -28,10 +28,12 @@ const (
 	PROCESS_CRIMES_AMOUNT_PER_AGE_QUEUE_NAME = "process.crimes-amount-per-age"
 )
 
-func (s *CountCrimesAmountPerAgeService) Execute(output *sync.Map, record *entity.Record) {
+func (s *CountCrimesAmountPerAgeService) Execute(output *sync.Map, record *entity.Record, mu *sync.Mutex) {
 	var crimesAmountPerAgeData *CountCrimesAmountPerAgeData
 
 	value, ok := output.Load(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY)
+
+	mu.Lock()
 
 	if !ok {
 		crimesAmountPerAgeData = &CountCrimesAmountPerAgeData{
@@ -85,6 +87,8 @@ func (s *CountCrimesAmountPerAgeService) Execute(output *sync.Map, record *entit
 	}
 
 	output.Store(CRIMES_AMOUNT_PER_AGE_OUTPUT_KEY, crimesAmountPerAgeData)
+
+	mu.Unlock()
 }
 
 func NewCountCrimesAmountPerAgeService() Service {

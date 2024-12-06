@@ -7,15 +7,18 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/configs"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/interfaces"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/app/service"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/domain/entity"
 	"github.com/caiogmrocha/etl-los-angeles-criminal-data-backend/internal/infra"
 )
 
+const (
+	CONSUMERS_PER_GOROUTINE = 4
+)
+
 func main() {
-	defer configs.Close()
+	// defer configs.Close()
 
 	rabbitmqQueue := infra.NewRabbitMQQueue()
 	produceProcessingTasksService := service.NewProduceProcessingTasksService(rabbitmqQueue)
@@ -25,7 +28,7 @@ func main() {
 	mutex := &sync.Mutex{}
 
 	go func() {
-		databasePath := filepath.Join("..", "..", "assets", "crime_data_from_2020_to_2024_los_angeles_minified.csv")
+		databasePath := filepath.Join("..", "..", "assets", "crime_data_from_2020_to_2024_los_angeles.csv")
 
 		mutex.Lock()
 		produceProcessingTasksService.Execute(context.Background(), databasePath, &recordsTotal)
@@ -64,39 +67,47 @@ func main() {
 	}
 
 	for queueName := range consumersMap {
-		go rabbitmqQueue.Consume(func(message []byte) error {
-			svc := consumersMap[queueName].ServiceConstructor()
+		for i := 0; i < CONSUMERS_PER_GOROUTINE; i++ {
+			go rabbitmqQueue.Consume(func(message []byte) error {
+				svc := consumersMap[queueName].ServiceConstructor()
 
-			var record entity.Record
+				record := &entity.Record{}
 
-			err := json.Unmarshal(message, &record)
+				err := json.Unmarshal(message, record)
 
-			if err != nil {
-				return err
-			}
+				if err != nil {
+					return err
+				}
 
-			svc.Execute(outputDataMap, &record)
+				svc.Execute(outputDataMap, record, mutex)
 
-			mutex.Lock()
-			consumersMap[queueName].Counter++
-			mutex.Unlock()
+				mutex.Lock()
+				consumersMap[queueName].Counter++
+				mutex.Unlock()
 
-			if recordsTotal == consumersMap[queueName].Counter {
-				consumersMap[queueName].DoneChannel <- true
+				if consumersMap[queueName].Counter%1000 == 0 {
+					log.Printf("Records processed from %s: %d", queueName, consumersMap[queueName].Counter)
+				}
+
+				if recordsTotal == consumersMap[queueName].Counter {
+					consumersMap[queueName].DoneChannel <- true
+
+					return nil
+				}
 
 				return nil
-			}
+			}, interfaces.ConsumeOptions{
+				QueueName:    queueName,
+				ExchangeName: "",
+				RoutingKey:   queueName,
+				ContentType:  "application/json",
+			})
 
-			return nil
-		}, interfaces.ConsumeOptions{
-			QueueName:    queueName,
-			ExchangeName: "",
-			RoutingKey:   queueName,
-			ContentType:  "application/json",
-		})
-
-		log.Printf("Record consumer from %s started", queueName)
+			log.Printf("Record consumer from %s started", queueName)
+		}
 	}
+
+	log.Println("Press CTRL+C to stop the service")
 
 	for queueName := range consumersMap {
 		<-consumersMap[queueName].DoneChannel
@@ -106,10 +117,7 @@ func main() {
 		close(consumersMap[queueName].DoneChannel)
 	}
 
-	log.Println("Press CTRL+C to stop the service")
-
 	storeOutputReportService := service.NewStoreOutputReportService()
 	outputPath := filepath.Join("..", "..", "assets", "output.json")
-
 	storeOutputReportService.Execute(outputDataMap, outputPath)
 }

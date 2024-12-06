@@ -8,5 +8,5 @@ import (
 
 type Service interface {
 	// Execute the service
-	Execute(output *sync.Map, args *entity.Record)
+	Execute(output *sync.Map, args *entity.Record, mu *sync.Mutex)
 }
